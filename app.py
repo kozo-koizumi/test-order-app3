@@ -21,9 +21,9 @@ if "submitted" not in st.session_state:
 if st.session_state.submitted:
     st.title("注文完了")
     st.success("ご注文ありがとうございました。以上です。")
-    if st.button("新しい注文を登録する"):
-        st.session_state.submitted = False
-        st.rerun()
+    #if st.button("新しい注文を登録する"):
+    #    st.session_state.submitted = False
+    #    st.rerun()
 
 # --- B. 入力画面の表示 ---
 else:
