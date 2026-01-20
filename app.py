@@ -29,10 +29,8 @@ if st.session_state.submitted:
 else:
     st.title("注文登録")
     
-    # 1. お名前（必須）
+    # 1. 基本情報入力
     name = st.text_input("お名前（必須）")
-    
-    # 2. 郵便番号と住所（必須）
     zipcode = st.text_input("郵便番号（必須・7桁ハイフンなし）")
     
     if st.button("住所を検索"):
@@ -44,61 +42,69 @@ else:
                 st.session_state.address_input = f"{r['address1']}{r['address2']}{r['address3']}"
             else:
                 st.error("該当する住所が見つかりませんでした。")
-        else:
-            st.error("郵便番号を7桁で入力してください。")
 
     address = st.text_input("住所（必須）", value=st.session_state.get("address_input", ""))
-
-    # 3. 連絡先（任意）
     phone = st.text_input("電話番号（任意）", placeholder="09012345678")
     email = st.text_input("メールアドレス（任意）", placeholder="example@mail.com")
 
     st.divider()
 
-    # 4. 商品選択
+    # 2. 商品選択（個数見出しとサイズ入力の追加）
     st.write("### 商品選択")
-    
-    col1, col2 = st.columns([2, 1])
-    with col1: st.write(f"シャツ (単価: ¥{P_SHIRT:,})")
-    with col2: shirt = st.selectbox("枚数", options=list(range(11)), key="s_qty", label_visibility="collapsed")
 
-    col3, col4 = st.columns([2, 1])
-    with col3: st.write(f"ズボン (単価: ¥{P_PANTS:,})")
-    with col4: pants = st.selectbox("本数", options=list(range(11)), key="p_qty", label_visibility="collapsed")
+    # ヘッダー代わり
+    h_col1, h_col2, h_col3 = st.columns([2, 1, 1])
+    with h_col1: st.write("**商品名**")
+    with h_col2: st.write("**個数**")
+    with h_col3: st.write("**サイズ**")
 
-    col5, col6 = st.columns([2, 1])
-    with col5: st.write(f"靴下 (単価: ¥{P_SOCKS:,})")
-    with col6: socks = st.selectbox("足数", options=list(range(11)), key="so_qty", label_visibility="collapsed")
+    # シャツ
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1: st.write(f"シャツ (¥{P_SHIRT:,})")
+    with col2: shirt_qty = st.selectbox("枚数", options=list(range(11)), key="s_qty", label_visibility="collapsed")
+    with col3: shirt_size = st.text_input("シャツサイズ", placeholder="例: M", key="s_size", label_visibility="collapsed")
+
+    # ズボン
+    col4, col5, col6 = st.columns([2, 1, 1])
+    with col4: st.write(f"ズボン (¥{P_PANTS:,})")
+    with col5: pants_qty = st.selectbox("本数", options=list(range(11)), key="p_qty", label_visibility="collapsed")
+    with col6: pants_size = st.text_input("ズボンサイズ", placeholder="例: L", key="p_size", label_visibility="collapsed")
+
+    # 靴下
+    col7, col8, col9 = st.columns([2, 1, 1])
+    with col7: st.write(f"靴下 (¥{P_SOCKS:,})")
+    with col8: socks_qty = st.selectbox("足数", options=list(range(11)), key="so_qty", label_visibility="collapsed")
+    with col9: socks_size = st.text_input("靴下サイズ", placeholder="例: 24-26", key="so_size", label_visibility="collapsed")
 
     st.divider()
     
-    # 5. 合計表示
-    total_price = (shirt * P_SHIRT) + (pants * P_PANTS) + (socks * P_SOCKS)
+    # 3. 合計表示
+    total_price = (shirt_qty * P_SHIRT) + (pants_qty * P_PANTS) + (socks_qty * P_SOCKS)
     st.metric(label="合計金額", value=f"{total_price:,}円")
 
-    # 6. 保存ボタン
+    # 4. 保存ボタン
     if st.button("この内容で確定する", use_container_width=True):
         if name and address and total_price > 0:
-            if email and "@" not in email:
-                st.error("有効なメールアドレスを入力してください。")
-            else:
-                try:
-                    data = {
-                        "name": name,
-                        "phone": phone,
-                        "email": email,
-                        "zipcode": zipcode.replace("-", ""),
-                        "address": address,
-                        "shirt": shirt,
-                        "pants": pants,
-                        "socks": socks,
-                        "total_price": total_price
-                    }
-                    supabase.table("orders").insert(data).execute()
-                    st.session_state.submitted = True
-                    st.rerun() 
-                except Exception as e:
-                    st.error(f"データベースエラー: {e}")
+            try:
+                data = {
+                    "name": name,
+                    "phone": phone,
+                    "email": email,
+                    "zipcode": zipcode.replace("-", ""),
+                    "address": address,
+                    "shirt": shirt_qty,
+                    "shirt_size": shirt_size, # サイズ追加
+                    "pants": pants_qty,
+                    "pants_size": pants_size, # サイズ追加
+                    "socks": socks_qty,
+                    "socks_size": socks_size, # サイズ追加
+                    "total_price": total_price
+                }
+                supabase.table("orders").insert(data).execute()
+                st.session_state.submitted = True
+                st.rerun() 
+            except Exception as e:
+                st.error(f"データベースエラー: {e}")
         else:
             st.error("「お名前」「住所」を入力し、商品を1つ以上選択してください。")
 
