@@ -50,4 +50,4 @@ if st.button("データをSupabaseへ保存"):
         except Exception as e:
             st.error(f"エラーが発生しました: {e}")
     else:
-        st.error("お名前と住所を入力してください。")        st.error("お名前と住所を入力してください。")
+        st.error("お名前と住所を入力してください。")
