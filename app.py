@@ -13,7 +13,7 @@ P_SHIRT, P_PANTS, P_SOCKS = 2000, 3000, 500
 st.set_page_config(page_title="注文登録", layout="centered")
 
 # --- 2. お届け先情報（上部に配置） ---
-st.title("📦 注文登録")
+st.title("注文登録")
 name = st.text_input("お名前")
 zipcode = st.text_input("郵便番号 (7桁)")
 
@@ -61,8 +61,7 @@ if st.button("この内容で保存する", use_container_width=True):
                 "shirt": shirt, "pants": pants, "socks": socks, "total_price": total_price
             }
             supabase.table("orders").insert(data).execute()
-            st.success("データベースに保存しました！")
-            st.balloons()
+            st.success("ご注文ありがとうございました。以上です。")
         except Exception as e:
             st.error(f"エラー: {e}")
     else:
