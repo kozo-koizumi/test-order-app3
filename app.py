@@ -7,15 +7,15 @@ SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# 商品ごとの単価（計算用）
-PRICES = {"shirt": 2000, "pants": 3000, "socks": 500}
+# 商品単価
+P_SHIRT, P_PANTS, P_SOCKS = 2000, 3000, 500
 
 st.set_page_config(page_title="注文登録", layout="centered")
-st.title("📦 注文登録（プルダウン形式）")
+st.title("💰 注文登録フォーム")
 
-# --- お届け先情報 ---
+# --- 1. お届け先情報 ---
 name = st.text_input("お名前")
-zipcode = st.text_input("郵便番号 (7桁)")
+zipcode = st.text_input("郵便番号")
 
 if st.button("住所を検索"):
     res = requests.get(f"https://zipcloud.ibsnet.co.jp/api/search?zipcode={zipcode}").json()
@@ -27,23 +27,43 @@ address = st.text_input("住所", value=st.session_state.get("address_input", ""
 
 st.divider()
 
-# --- 商品入力（プルダウン形式） ---
-# options=list(range(11)) で 0〜10 の選択肢を作ります
-shirt = st.selectbox("シャツの枚数", options=list(range(11)), index=0)
-pants = st.selectbox("ズボンの本数", options=list(range(11)), index=0)
-socks = st.selectbox("靴下の足数", options=list(range(11)), index=0)
+# --- 2. 項目の横にプルダウンを配置 ---
+st.subheader("数量選択")
 
-# 合計金額の計算
-total_price = (shirt * PRICES["shirt"]) + (pants * PRICES["pants"]) + (socks * PRICES["socks"])
+# シャツ
+col1, col2 = st.columns([2, 1])
+with col1:
+    st.write(f"### シャツ")
+    st.write(f"単価: {P_SHIRT}円")
+with col2:
+    shirt = st.selectbox("枚数を選択", options=list(range(11)), key="s_qty")
+
+# ズボン
+col3, col4 = st.columns([2, 1])
+with col3:
+    st.write(f"### ズボン")
+    st.write(f"単価: {P_PANTS}円")
+with col4:
+    pants = st.selectbox("本数を選択", options=list(range(11)), key="p_qty")
+
+# 靴下
+col5, col6 = st.columns([2, 1])
+with col5:
+    st.write(f"### 靴下")
+    st.write(f"単価: {P_SOCKS}円")
+with col6:
+    socks = st.selectbox("足数を選択", options=list(range(11)), key="so_qty")
+
+# --- 金額計算 ---
+total_price = (shirt * P_SHIRT) + (pants * P_PANTS) + (socks * P_SOCKS)
 
 st.divider()
 st.metric(label="合計金額", value=f"{total_price}円")
 
-# --- 保存処理 ---
-if st.button("この内容で保存"):
+# --- 3. 保存処理 ---
+if st.button("この内容で保存する"):
     if name and address:
         try:
-            # 💡 エラーの原因だった 'item_name' は含めず、各列に直接入れます
             data = {
                 "name": name,
                 "zipcode": zipcode,
@@ -53,13 +73,10 @@ if st.button("この内容で保存"):
                 "socks": socks,
                 "total_price": total_price
             }
-            
             supabase.table("orders").insert(data).execute()
-            st.success("各セルへ正常に保存されました！")
+            st.success("データベースの各セルに保存しました！")
             st.balloons()
-            
         except Exception as e:
-            st.error(f"エラーが発生しました: {e}")
-            st.info("Supabaseのテーブルに shirt, pants, socks, total_price 列があるか確認してください。")
+            st.error(f"エラー: {e}")
     else:
-        st.error("名前と住所を入力してください。")
+        st.error("入力が不足しています")
