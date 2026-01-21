@@ -69,12 +69,13 @@ if st.session_state.phase == "complete":
     st.write("ご注文ありがとうございました。")
     st.write(f"受付番号：{st.session_state.order_id}")
     st.write("受付番号をお控えください。")
-
-    if st.button("新しい注文を登録する"):
-        st.session_state.phase = "input"
-        st.session_state.order_data = {}
-        st.session_state.order_id = None
-        st.rerun()
+    # 終了メッセージのみ 
+    st.write("この画面を閉じて終了してください。")
+    #if st.button("新しい注文を登録する"):
+    #    st.session_state.phase = "input"
+    #    st.session_state.order_data = {}
+    #    st.session_state.order_id = None
+    #    st.rerun()
 
 # ==================================================
 # 確認画面
