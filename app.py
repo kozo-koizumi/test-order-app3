@@ -6,7 +6,7 @@ from supabase import create_client, Client
 # --- Supabase設定 ---
 # ===============================
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["SUPABASE_KEY"]  # Publishable key
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ===============================
@@ -16,9 +16,13 @@ FIXED_USER_ID = st.secrets["USER_ID"]
 FIXED_PASSWORD = st.secrets["PASSWORD"]
 
 # ===============================
-# --- 商品単価 ---
+# --- 商品情報 ---
 # ===============================
-P_SHIRT, P_PANTS, P_SOCKS = 2000, 3000, 500
+products = {
+    "shirt": {"label": "シャツ", "price": 2000},
+    "pants": {"label": "ズボン", "price": 3000},
+    "socks": {"label": "靴下", "price": 500},
+}
 
 st.set_page_config(page_title="注文登録", layout="wide")
 
@@ -59,20 +63,113 @@ if not st.session_state.user_logged_in:
             st.session_state.user_logged_in = True
             st.session_state.phase = "input"
             st.success("ログイン成功")
-            st.rerun()  # 画面即更新
+            st.rerun()
         else:
             st.error("ログイン失敗")
-    st.stop()  # ログイン画面でスクリプト停止
+    st.stop()
 
 # ===============================
-# --- 完了画面 ---
+# --- 入力画面用関数 ---
 # ===============================
-if st.session_state.phase == "complete":
-    st.title("注文完了")
-    st.write("ご注文ありがとうございました。")
-    st.write(f"受付番号：{st.session_state.order_id}")
-    st.write("受付番号をお控えください。")
-    st.write("この画面を閉じて終了してください。")
+def product_row(label, key):
+    """商品ごとの入力行を作成"""
+    st.write(f"### {label}")  # 商品名を表示
+
+    if key == "pants":
+        # ズボン: 数量・ウェスト・丈・備考
+        c = st.columns([1,1,1,2])
+        with c[0]: st.write("数量")
+        with c[1]: st.write("ウェスト")
+        with c[2]: st.write("丈")
+        with c[3]: st.write("備考")
+        # 入力
+        with c[0]:
+            qty = st.selectbox("", range(11), key=f"{key}_qty")
+        with c[1]:
+            waist = st.selectbox("", list(range(61,111,3)), key=f"{key}_waist", index=None)
+        with c[2]:
+            length = st.text_input("", key=f"{key}_length", placeholder="丈を入力")
+        with c[3]:
+            memo = st.text_input("", key=f"{key}_memo", placeholder="備考を入力")
+        return {"qty": qty, "waist": waist, "length": length, "memo": memo}
+    
+    else:
+        # シャツ・靴下: 数量・サイズ・備考
+        c = st.columns([1,1,2])
+        with c[0]: st.write("数量")
+        with c[1]: st.write("サイズ")
+        with c[2]: st.write("備考")
+        # 入力
+        with c[0]:
+            qty = st.selectbox("", range(11), key=f"{key}_qty")
+        with c[1]:
+            if key == "shirt":
+                size = st.selectbox("", ["S","M","L","XL"], index=None, key=f"{key}_size", format_func=lambda x: "" if x is None else x)
+            elif key == "socks":
+                size = st.text_input("", key=f"{key}_size", placeholder="サイズを入力")
+            else:
+                size = ""
+        with c[2]:
+            memo = st.text_input("", key=f"{key}_memo", placeholder="備考を入力")
+        return {"qty": qty, "size": size, "memo": memo}
+
+# ===============================
+# --- 入力画面 ---
+# ===============================
+if st.session_state.phase == "input":
+    st.title("注文登録")
+
+    if st.button("ログアウト"):
+        st.session_state.clear()
+        st.rerun()
+
+    # --- お客様情報 ---
+    st.write("### 1. お客様情報")
+    name = st.text_input("お名前（必須）", value=st.session_state.order_data.get("name", ""))
+    zipcode = st.text_input("郵便番号(必須)  ハイフンなしで入力", value=st.session_state.order_data.get("zipcode",""), max_chars=7)
+
+    if st.button("住所検索"):
+        clean_zip = zipcode.replace("-", "").replace(" ", "")
+        res = requests.get(f"https://zipcloud.ibsnet.co.jp/api/search?zipcode={clean_zip}").json()
+        if res.get("results"):
+            r = res["results"][0]
+            st.session_state.address_input = r["address1"] + r["address2"] + r["address3"]
+
+    address = st.text_input(
+        "住所（必須）",
+        value=st.session_state.get("address_input", st.session_state.order_data.get("address",""))
+    )
+    phone = st.text_input("電話番号（任意）", value=st.session_state.order_data.get("phone",""))
+    email = st.text_input("メールアドレス（任意）", value=st.session_state.order_data.get("email",""))
+
+    st.divider()
+    st.write("### 2. 商品選択")
+
+    # --- 商品ごとにフォーム生成 ---
+    order_data = {}
+    for key, info in products.items():
+        order_data[key] = product_row(info["label"], key)
+
+    # --- 合計金額計算 ---
+    total_price = sum(order_data[key]["qty"] * products[key]["price"] for key in products)
+
+    st.markdown(f"<div class='total-box'>合計金額：{total_price:,} 円</div>", unsafe_allow_html=True)
+
+    if st.button("確認画面へ進む", type="primary", use_container_width=True):
+        if not name or not address or total_price == 0:
+            st.error("必須項目を入力してください")
+        else:
+            st.session_state.order_data = {
+                "name": name,
+                "zipcode": zipcode,
+                "address": address,
+                "phone": phone,
+                "email": email,
+                **order_data,
+                "total_price": total_price
+            }
+            st.session_state.phase = "confirm"
+            st.rerun()
 
 # ===============================
 # --- 確認画面 ---
@@ -92,10 +189,15 @@ elif st.session_state.phase == "confirm":
 
     with col_order:
         st.write("【注文商品】")
-        for item, label in [("shirt", "シャツ"), ("pants", "ズボン"), ("socks", "靴下")]:
-            if data[item] > 0:
-                memo = f" / 備考: {data[item+'_memo']}" if data[item+'_memo'] else ""
-                st.write(f"{label}: {data[item]}点 ({data[item+'_size']}){memo}")
+        for key, info in products.items():
+            item = data[key]
+            if item["qty"] > 0:
+                if key == "pants":
+                    memo = f" / 備考: {item['memo']}" if item["memo"] else ""
+                    st.write(f"{info['label']}: {item['qty']}点 (ウェスト: {item['waist']}, 丈: {item['length']}){memo}")
+                else:
+                    memo = f" / 備考: {item['memo']}" if item["memo"] else ""
+                    st.write(f"{info['label']}: {item['qty']}点 ({item['size']}){memo}")
         st.write(f"合計金額: {data['total_price']:,}円")
 
     st.divider()
@@ -106,105 +208,33 @@ elif st.session_state.phase == "confirm":
             st.rerun()
     with c2:
         if st.button("確定する", type="primary", use_container_width=True):
-            res = supabase.table("orders").insert(data).execute()
+            insert_data = {
+                "name": data["name"],
+                "zipcode": data["zipcode"],
+                "address": data["address"],
+                "phone": data["phone"],
+                "email": data["email"],
+                **{f"{key}": data[key]["qty"] for key in products},
+                **{f"{key}_memo": data[key]["memo"] for key in products},
+                **({f"pants_waist": data['pants']['waist'], f"pants_length": data['pants']['length']} if 'pants' in data else {}),
+                **({f"{key}_size": data[key]["size"] for key in products if key != "pants"})
+            }
+            res = supabase.table("orders").insert(insert_data).execute()
             if res.data:
                 st.session_state.order_id = res.data[0]["id"]
             st.session_state.phase = "complete"
             st.rerun()
 
 # ===============================
-# --- 入力画面 ---
+# --- 完了画面 ---
 # ===============================
-else:
-    st.title("注文登録")
+elif st.session_state.phase == "complete":
+    st.title("注文完了")
+    st.write("ご注文ありがとうございました。")
+    st.write(f"受付番号：{st.session_state.order_id}")
+    st.write("受付番号をお控えください。")
+    st.session_state.pop("address_input", None)
 
-    # --- お客様情報 ---
-    st.write("### 1. お客様情報")
-    st.markdown("<div class='w-m'>", unsafe_allow_html=True)
-    name = st.text_input("お名前（必須）", value=st.session_state.order_data.get("name", ""))
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    z1, z2 = st.columns([1,4])
-    with z1:
-        st.markdown("<div class='w-s'>", unsafe_allow_html=True)
-        zipcode = st.text_input("郵便番号", value=st.session_state.order_data.get("zipcode",""), placeholder="1234567", max_chars=7)
-        st.markdown("</div>", unsafe_allow_html=True)
-    with z2:
-        st.write("")
-        if st.button("住所検索"):
-            clean_zip = zipcode.replace("-", "").replace(" ", "")
-            res = requests.get(f"https://zipcloud.ibsnet.co.jp/api/search?zipcode={clean_zip}").json()
-            if res.get("results"):
-                r = res["results"][0]
-                st.session_state.address_input = r["address1"] + r["address2"] + r["address3"]
-
-    st.markdown("<div class='w-xl'>", unsafe_allow_html=True)
-    address = st.text_input("住所（必須）", value=st.session_state.get("address_input", st.session_state.order_data.get("address","")))
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("<div class='w-m'>", unsafe_allow_html=True)
-    phone = st.text_input("電話番号（任意）", value=st.session_state.order_data.get("phone",""))
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("<div class='w-l'>", unsafe_allow_html=True)
-    email = st.text_input("メールアドレス（任意）", value=st.session_state.order_data.get("email",""))
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.divider()
-    st.write("### 2. 商品選択")
-
-    h = st.columns([1.2,0.7,0.8,4])
-    h[0].markdown("<div class='header'>商品</div>", unsafe_allow_html=True)
-    h[1].markdown("<div class='header'>数量</div>", unsafe_allow_html=True)
-    h[2].markdown("<div class='header'>サイズ</div>", unsafe_allow_html=True)
-    h[3].markdown("<div class='header'>備考</div>", unsafe_allow_html=True)
-
-    def product_row(label, price, key_prefix):
-        cols = st.columns([1.2,0.7,0.8,4])
-        with cols[0]: st.write(label)
-        with cols[1]:
-            st.markdown("<div class='w-xs'>", unsafe_allow_html=True)
-            qty = st.selectbox(f"q_{key_prefix}", options=list(range(11)),
-                               index=st.session_state.order_data.get(key_prefix,0),
-                               key=f"{key_prefix}_q", label_visibility="collapsed")
-            st.markdown("</div>", unsafe_allow_html=True)
-        with cols[2]:
-            st.markdown("<div class='w-xs'>", unsafe_allow_html=True)
-            size = st.text_input(f"s_{key_prefix}", value=st.session_state.order_data.get(f"{key_prefix}_size",""),
-                                 key=f"{key_prefix}_s", placeholder="M", label_visibility="collapsed")
-            st.markdown("</div>", unsafe_allow_html=True)
-        with cols[3]:
-            st.markdown("<div class='w-xl'>", unsafe_allow_html=True)
-            memo = st.text_input(f"m_{key_prefix}", value=st.session_state.order_data.get(f"{key_prefix}_memo",""),
-                                 key=f"{key_prefix}_m", placeholder="備考を入力", label_visibility="collapsed")
-            st.markdown("</div>", unsafe_allow_html=True)
-        return qty, size, memo
-
-    s_qty, s_size, s_memo = product_row("シャツ", P_SHIRT, "shirt")
-    p_qty, p_size, p_memo = product_row("ズボン", P_PANTS, "pants")
-    so_qty, so_size, so_memo = product_row("靴下", P_SOCKS, "socks")
-
-    total_price = s_qty*P_SHIRT + p_qty*P_PANTS + so_qty*P_SOCKS
-    st.markdown(f"<div class='total-box'>合計金額：{total_price:,} 円</div>", unsafe_allow_html=True)
-
-    if st.button("確認画面へ進む", use_container_width=True, type="primary"):
-        if name and address and total_price > 0:
-            st.session_state.order_data = {
-                "name": name,
-                "zipcode": zipcode,
-                "address": address,
-                "phone": phone,
-                "email": email,
-                "shirt": s_qty,
-                "shirt_size": s_size,
-                "shirt_memo": s_memo,
-                "pants": p_qty,
-                "pants_size": p_size,
-                "pants_memo": p_memo,
-                "socks": so_qty,
-                "socks_size": so_size,
-                "socks_memo": so_memo,
-                "total_price": total_price
-            }
-            st.session_state.phase = "confirm"
-            st.rerun()  # ← ここで画面即更新
+    if st.button("ログアウト"):
+        st.session_state.clear()
+        st.rerun()
