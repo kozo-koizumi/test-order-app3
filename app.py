@@ -67,51 +67,116 @@ if not st.session_state.user_logged_in:
         else:
             st.error("ログイン失敗")
     st.stop()
-
 # ===============================
-# --- 入力画面用関数 ---
+# --- 入力画面用関数 --- #
 # ===============================
 def product_row(label, key):
-    """商品ごとの入力行を作成"""
-    st.write(f"### {label}")  # 商品名を表示
+    st.write(f"### {label}")
 
     if key == "pants":
-        # ズボン: 数量・ウェスト・丈・備考
-        c = st.columns([1,1,1,2])
-        with c[0]: st.write("数量")
-        with c[1]: st.write("ウェスト")
-        with c[2]: st.write("丈")
-        with c[3]: st.write("備考")
-        # 入力
-        with c[0]:
-            qty = st.selectbox("", range(11), key=f"{key}_qty")
-        with c[1]:
-            waist = st.selectbox("", list(range(61,111,3)), key=f"{key}_waist", index=None)
-        with c[2]:
-            length = st.text_input("", key=f"{key}_length", placeholder="丈を入力")
-        with c[3]:
-            memo = st.text_input("", key=f"{key}_memo", placeholder="備考を入力")
+        # 数量
+        c_label, c_input, c_sp = st.columns([1, 1.2, 6])
+        with c_label:
+            st.markdown("数量")
+        with c_input:
+            qty = st.selectbox(
+                "",
+                list(range(0, 11)),
+                key=f"{key}_qty",
+                label_visibility="collapsed",
+            )
+
+        # ウエスト
+        c_label, c_input, c_sp = st.columns([1, 1.2, 6])
+        with c_label:
+            st.markdown("ウエスト")
+        with c_input:
+            waist = st.selectbox(
+                "",
+                list(range(61, 111, 3)),
+                index=None,
+                placeholder="— 選択してください —",  
+                key=f"{key}_waist",
+                label_visibility="collapsed",
+            )
+
+        # 丈
+        c_label, c_input, c_sp = st.columns([1, 1.2, 6])
+        with c_label:
+            st.markdown("丈")
+        with c_input:
+            length = st.text_input(
+                "",
+                key=f"{key}_length",
+                placeholder="95",
+                label_visibility="collapsed",
+            )
+
+        # 備考（備考はやや長めの入力欄に）
+        c_label, c_input, c_sp = st.columns([1, 3, 4.2])
+        with c_label:
+            st.markdown("備考")
+        with c_input:
+            memo = st.text_input(
+                "",
+                key=f"{key}_memo",
+                placeholder="任意",
+                label_visibility="collapsed",
+            )
+
         return {"qty": qty, "waist": waist, "length": length, "memo": memo}
-    
+
     else:
-        # シャツ・靴下: 数量・サイズ・備考
-        c = st.columns([1,1,2])
-        with c[0]: st.write("数量")
-        with c[1]: st.write("サイズ")
-        with c[2]: st.write("備考")
-        # 入力
-        with c[0]:
-            qty = st.selectbox("", range(11), key=f"{key}_qty")
-        with c[1]:
+        # シャツ・靴下
+
+        # 数量
+        c_label, c_input, c_sp = st.columns([1, 1.2, 6])
+        with c_label:
+            st.markdown("数量")
+        with c_input:
+            qty = st.selectbox(
+                "",
+                list(range(0, 11)),
+                key=f"{key}_qty",
+                label_visibility="collapsed",
+            )
+
+        # サイズ
+        c_label, c_input, c_sp = st.columns([1, 1.8, 5.4])
+        with c_label:
+            st.markdown("サイズ")
+        with c_input:
             if key == "shirt":
-                size = st.selectbox("", ["S","M","L","XL"], index=None, key=f"{key}_size", format_func=lambda x: "" if x is None else x)
-            elif key == "socks":
-                size = st.text_input("", key=f"{key}_size", placeholder="サイズを入力")
-            else:
-                size = ""
-        with c[2]:
-            memo = st.text_input("", key=f"{key}_memo", placeholder="備考を入力")
-        return {"qty": qty, "size": size, "memo": memo}
+                size = st.selectbox(
+                    "",
+                    ["S", "M", "L", "XL"],
+                    index=None,
+                    placeholder="— 選択してください —",  
+                    key=f"{key}_size",
+                    label_visibility="collapsed",
+                )
+            else:  # socks
+                size = st.text_input(
+                    "",
+                    key=f"{key}_size",
+                    placeholder="25-27",
+                    label_visibility="collapsed",
+                )
+
+        # 備考
+        c_label, c_input, c_sp = st.columns([1, 3, 4.2])
+        with c_label:
+            st.markdown("備考")
+        with c_input:
+            memo = st.text_input(
+                "",
+                key=f"{key}_memo",
+                placeholder="任意",
+                label_visibility="collapsed",
+            )
+
+        return {"qty": qty, "size": size or "", "memo": memo}
+  
 
 # ===============================
 # --- 入力画面 ---
@@ -119,28 +184,70 @@ def product_row(label, key):
 if st.session_state.phase == "input":
     st.title("注文登録")
 
-    if st.button("ログアウト"):
-        st.session_state.clear()
-        st.rerun()
-
     # --- お客様情報 ---
     st.write("### 1. お客様情報")
-    name = st.text_input("お名前（必須）", value=st.session_state.order_data.get("name", ""))
-    zipcode = st.text_input("郵便番号(必須)  ハイフンなしで入力", value=st.session_state.order_data.get("zipcode",""), max_chars=7)
 
-    if st.button("住所検索"):
-        clean_zip = zipcode.replace("-", "").replace(" ", "")
-        res = requests.get(f"https://zipcloud.ibsnet.co.jp/api/search?zipcode={clean_zip}").json()
-        if res.get("results"):
-            r = res["results"][0]
-            st.session_state.address_input = r["address1"] + r["address2"] + r["address3"]
+    name = st.text_input(
+        "お名前（必須）",
+        value=st.session_state.order_data.get("name", "")
+    )
 
+    # --- 郵便番号 + 住所検索（横並び・左寄せ） ---
+    import re
+    c_zip, c_btn, c_sp = st.columns([2, 1, 3])  # 入力/ボタン/余白（見た目調整用）
+    with c_zip:
+        zipcode = st.text_input(
+            "郵便番号（必須）※ハイフンなし",
+            value=st.session_state.order_data.get("zipcode", ""),
+            max_chars=7,
+            placeholder="例：6008001",
+            help="7桁の数字を入力してください（例：6008001）"
+        )
+    with c_btn:
+        st.write("")  # ボタンの縦位置を入力と揃えるためのダミー
+        lookup_clicked = st.button("住所検索", use_container_width=True)
+
+    # --- 住所検索処理 ---
+    if lookup_clicked:
+        clean_zip = re.sub(r"[^0-9]", "", zipcode or "")
+        if not re.fullmatch(r"\d{7}", clean_zip):
+            st.warning("郵便番号は7桁の数字で入力してください（例：6008001）。")
+        else:
+            try:
+                res = requests.get(
+                    f"https://zipcloud.ibsnet.co.jp/api/search?zipcode={clean_zip}",
+                    timeout=5
+                ).json()
+                if res.get("results"):
+                    r = res["results"][0]
+                    st.session_state.address_input = f"{r['address1']}{r['address2']}{r['address3']}"
+                    st.success("住所を取得しました。下の住所欄をご確認ください。")
+                else:
+                    st.info("該当する住所が見つかりませんでした。郵便番号をご確認ください。")
+            except Exception:
+                st.error("住所検索に失敗しました。時間をおいて再度お試しください。")
+
+    # --- 住所（検索結果があれば初期値に反映） ---
     address = st.text_input(
         "住所（必須）",
-        value=st.session_state.get("address_input", st.session_state.order_data.get("address",""))
+        value=st.session_state.get(
+            "address_input",
+            st.session_state.order_data.get("address", "")
+        ),
+        placeholder="例：京都府京都市下京区四条通寺町東入2丁目御旅町"
     )
-    phone = st.text_input("電話番号（任意）", value=st.session_state.order_data.get("phone",""))
-    email = st.text_input("メールアドレス（任意）", value=st.session_state.order_data.get("email",""))
+
+    phone = st.text_input(
+        "電話番号（任意）",
+        value=st.session_state.order_data.get("phone", ""),
+        placeholder="例：0751234567"
+    )
+
+    email = st.text_input(
+        "メールアドレス（任意）",
+        value=st.session_state.order_data.get("email", ""),
+        placeholder="例：taro@example.com"
+    )
 
     st.divider()
     st.write("### 2. 商品選択")
