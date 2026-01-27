@@ -203,9 +203,25 @@ elif st.session_state.phase == "confirm":
     st.divider()
     c1, c2 = st.columns(2)
     with c1:
-        if st.button("修正する", use_container_width=True):
-            st.session_state.phase = "input"
-            st.rerun()
+       if st.button("修正する", use_container_width=True):
+        data = st.session_state.order_data
+
+        # --- 商品入力値を session_state に戻す ---
+        for key in products:
+            st.session_state[f"{key}_qty"] = data[key]["qty"]
+            st.session_state[f"{key}_memo"] = data[key]["memo"]
+
+            if key == "pants":
+                st.session_state["pants_waist"] = data["pants"]["waist"]
+                st.session_state["pants_length"] = data["pants"]["length"]
+            else:
+                st.session_state[f"{key}_size"] = data[key]["size"]
+
+        # --- 顧客情報 ---
+        st.session_state["address_input"] = data["address"]
+
+        st.session_state.phase = "input"
+        st.rerun()
     with c2:
         if st.button("確定する", type="primary", use_container_width=True):
             insert_data = {
