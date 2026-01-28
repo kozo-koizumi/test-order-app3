@@ -49,7 +49,7 @@ products = {
 }
 
 # ===============================
-# --- CSS ---
+# --- CSS（共通） ---
 # ===============================
 st.markdown("""
 <style>
@@ -172,7 +172,7 @@ if st.session_state.phase == "input":
 
     name = st.text_input("お名前（必須）", value=st.session_state.order_data.get("name", ""))
 
-    # --- 郵便番号 + 住所検索（スマホでも100%横並び） ---
+    # --- 郵便番号 + 住所検索（スマホでも1行で横並び） ---
     # 直前の値をHTMLのvalueに表示（7桁までに整形）
     current_zip = re.sub(r"[^0-9]", "", st.session_state.get("zipcode_input", ""))[:7]
 
@@ -180,26 +180,53 @@ if st.session_state.phase == "input":
 <style>
   .zip-row {{
     display: flex; align-items: center; gap: 8px; width: 100%;
+    white-space: nowrap; flex-wrap: nowrap;  /* 折返し防止で常に1行 */
   }}
-  .zip-row label {{ min-width: 72px; }}
+  .zip-row label {{
+    min-width: 72px;
+    font-size: 14px; color: #333;
+  }}
   .zip-row input[type="text"] {{
-    flex: 0 0 auto; max-width: 220px; padding: 8px; font-size: 16px;
+    flex: 0 0 auto;
+    width: 140px;            /* コンパクト固定幅（より小さくしたい場合は 130 も可） */
+    max-width: 45vw;         /* 画面幅に応じて縮む */
+    height: 28px;            /* 少し低め */
+    padding: 4px 6px;        /* 余白を少し詰める */
+    font-size: 15px;         /* 視認性は維持しつつ小さめ（iOSズーム回避は16px推奨） */
+    box-sizing: border-box;
   }}
   .zip-row button {{
-    flex: 0 0 auto; padding: 8px 12px; font-size: 16px; white-space: nowrap;
+    flex: 0 0 auto;
+    height: 30px;
+    padding: 4px 8px;
+    font-size: 14px;
+    white-space: nowrap;
   }}
-  @media (max-width: 480px) {{
-    .zip-row input[type="text"] {{ max-width: 160px; font-size: 15px; padding: 6px 8px; }}
-    .zip-row button {{ font-size: 15px; padding: 6px 10px; }}
+
+  /* さらに狭い端末（~360px）向けの最終調整 */
+  @media (max-width: 360px) {{
+    .zip-row input[type="text"] {{
+      width: 120px;
+      max-width: 44vw;
+      padding: 3px 6px;
+      font-size: 14px;
+      height: 28px;
+    }}
+    .zip-row button {{
+      font-size: 13px;
+      padding: 3px 8px;
+      height: 28px;
+    }}
   }}
 </style>
 <form class="zip-row" method="get" action="">
   <label for="zip">郵便番号</label>
   <input id="zip" name="zip" type="text" inputmode="numeric" pattern="[0-9]*"
+         autocomplete="postal-code"
          placeholder="6008001" maxlength="7" value="{current_zip}">
   <button type="submit">住所検索</button>
 </form>
-""", height=70)
+""", height=56)
 
     # --- クエリパラメータから zip を取得（新API優先、旧APIfallback） ---
     try:
