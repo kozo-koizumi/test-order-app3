@@ -82,7 +82,53 @@ st.markdown("""
 }
 </style>
 """, unsafe_allow_html=True)
+st.markdown("""
+<style>
+/* --- 郵便番号行（スマホでも絶対横並び） --- */
+.zip-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  white-space: nowrap;       /* 折り返さない */
+  flex-wrap: nowrap;         /* 折り返し禁止 */
+}
+.zip-row .label {
+  min-width: 80px;           /* ラベル幅を固定して揺れを抑える */
+  color: #333; font-size: 14px;
+}
+.zip-row .field {
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.zip-row input[type="text"] {
+  /* iOSズーム回避のため16px以上、ただし横幅は最小限 */
+  font-size: 16px;
+  height: 32px;
+  padding: 6px 8px;
+  width: 140px;              /* 入力欄の固定幅（狭め）*/
+  max-width: 50vw;           /* 画面幅の半分まで */
+}
+.zip-row button {
+  font-size: 14px;
+  height: 32px;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
 
+/* 超狭幅デバイスでの最終手段（それでも1行を維持） */
+@media (max-width: 360px) {
+  .zip-row input[type="text"] {
+    width: 120px;
+    max-width: 48vw;
+    padding: 4px 6px;
+  }
+  .zip-row button {
+    font-size: 13px;
+    padding: 4px 8px;
+  }
+}
+</style>
+""", unsafe_allow_html=True)
 # ===============================
 # --- ログイン画面 ---
 # ===============================
