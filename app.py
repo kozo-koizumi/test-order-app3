@@ -16,12 +16,46 @@ FIXED_USER_ID = st.secrets["USER_ID"]
 FIXED_PASSWORD = st.secrets["PASSWORD"]
 
 # ===============================
-# --- 商品情報 ---
+# --- 商品マスタ ---
 # ===============================
+# ※価格は仮（必要に応じて調整してください）
 products = {
-    "shirt": {"label": "シャツ", "price": 2000},
-    "pants": {"label": "ズボン", "price": 3000},
-    "socks": {"label": "靴下", "price": 500},
+    "blazer":       {"label": "ブレザー",                "price": 12000},
+    "shirt":        {"label": "シャツ",                  "price": 2000},
+    "pants":        {"label": "ズボン",                  "price": 3000},
+    "vest":         {"label": "ベスト",                  "price": 4000},
+    "sweater":      {"label": "セーター",                "price": 4500},
+    "necktie":      {"label": "ネクタイ",                "price": 1500},
+    "sandals":      {"label": "サンダル",                "price": 1800},
+    "pe_shirt":     {"label": "体操服（半袖）",          "price": 2200},
+    "pe_halfpants": {"label": "体操服（ハーフパンツ）",  "price": 2000},
+    "pe_jacket":    {"label": "体操服（ジャージ上着）",  "price": 5000},
+    "pe_pants":     {"label": "体操服（パンツ）",        "price": 3800},
+}
+
+# ===============================
+# --- 入力仕様（商品別フォーム定義） ---
+# ===============================
+# type:
+#  - "qty_size_memo": 数量 + サイズ + 備考
+#  - "pants":         数量 + ウエスト + 丈 + 備考
+#  - "qty_memo":      数量 + 備考（サイズ不要）
+# size_options:
+#  - リストの場合: セレクトボックス
+#  - "free_text":     自由入力
+#  - 数値レンジ:      {"range": (min, max, step)} でセレクトボックス
+product_specs = {
+    "blazer":       {"type": "qty_size_memo", "size_options": ["S","M","L","XL"]},
+    "shirt":        {"type": "qty_size_memo", "size_options": ["S","M","L","XL"]},
+    "pants":        {"type": "pants",         "waist_range": (61, 111, 3), "length_placeholder": "72"},
+    "vest":         {"type": "qty_size_memo", "size_options": ["S","M","L","XL"]},
+    "sweater":      {"type": "qty_size_memo", "size_options": ["S","M","L","XL"]},
+    "necktie":      {"type": "qty_memo"},
+    "sandals":      {"type": "qty_size_memo", "size_options": {"range": (22, 31, 1)}},  # 例: 22〜30cm
+    "pe_shirt":     {"type": "qty_size_memo", "size_options": ["S","M","L","XL"]},
+    "pe_halfpants": {"type": "qty_size_memo", "size_options": ["S","M","L","XL"]},
+    "pe_jacket":    {"type": "qty_size_memo", "size_options": ["S","M","L","XL"]},
+    "pe_pants":     {"type": "qty_size_memo", "size_options": ["S","M","L","XL"]},
 }
 
 st.set_page_config(page_title="注文登録", layout="wide")
@@ -67,91 +101,41 @@ if not st.session_state.user_logged_in:
         else:
             st.error("ログイン失敗")
     st.stop()
+
 # ===============================
-# --- 入力画面用関数 --- #
+# --- 入力コンポーネント ---
 # ===============================
-def product_row(label, key):
+def product_row(label: str, key: str):
+    """商品別の入力行を定義に基づき生成"""
     st.write(f"### {label}")
+    spec = product_specs.get(key, {"type": "qty_size_memo", "size_options": ["S","M","L","XL"]})
 
-    if key == "pants":
-        # 数量
-        c1, c2 = st.columns([1, 1])
-        with c1:
-            st.markdown("数量")
-        with c2:
-            qty = st.selectbox("", range(11), key=f"{key}_qty", label_visibility="collapsed")
+    # 数量（共通）
+    qty = st.selectbox("数量", range(11), key=f"{key}_qty")
 
-        # ウエスト
-        c1, c2 = st.columns([1, 1])
-        with c1:
-            st.markdown("ウエスト")
-        with c2:
-            waist = st.selectbox("", list(range(61, 111, 3)), key=f"{key}_waist", label_visibility="collapsed")
-
-        # 丈
-        c1, c2 = st.columns([1, 1])
-        with c1:
-            st.markdown("丈")
-        with c2:
-            length = st.text_input("", key=f"{key}_length", placeholder="72", label_visibility="collapsed")
-
-        # 備考
-        c1, c2 = st.columns([1, 3])
-        with c1:
-            st.markdown("備考")
-        with c2:
-            memo = st.text_input("", key=f"{key}_memo", label_visibility="collapsed")
-
-        return {"qty": qty, "waist": waist, "length": length, "memo": memo}
-
-    else:
-        # シャツ・靴下
-        c1, c2 = st.columns([1, 1])
-        with c1:
-            st.markdown("数量")
-        with c2:
-            qty = st.selectbox("", range(11), key=f"{key}_qty", label_visibility="collapsed")
-
-        c1, c2 = st.columns([1, 2])
-        with c1:
-            st.markdown("サイズ")
-        with c2:
-            if key == "shirt":
-                size = st.selectbox("", ["S", "M", "L", "XL"], key=f"{key}_size", label_visibility="collapsed")
-            else:
-                size = st.text_input("", key=f"{key}_size", placeholder="25-27", label_visibility="collapsed")
-
-        c1, c2 = st.columns([1, 3])
-        with c1:
-            st.markdown("備考")
-        with c2:
-            memo = st.text_input("", key=f"{key}_memo", label_visibility="collapsed")
-
-        return {"qty": qty, "size": size, "memo": memo}
-
-
-
-def product_row(label, key):
-    """商品ごとの入力行を作成（ラベルの横に入力欄を置き、改行）"""
-    st.write(f"### {label}")  # 商品名を表示
-
-    if key == "pants":
-        # ズボン: 数量・ウェスト・丈・備考
-        qty = st.selectbox("数量", range(11), key=f"{key}_qty")
-        waist = st.selectbox("ウエスト", list(range(61, 111, 3)), key=f"{key}_waist", index=None)
-        length = st.text_input("丈", key=f"{key}_length", placeholder="丈を入力")
+    # 種別ごとに追加フィールド
+    if spec["type"] == "pants":
+        waist_min, waist_max, waist_step = spec.get("waist_range", (61,111,3))
+        waist_choices = list(range(waist_min, waist_max, waist_step))
+        waist = st.selectbox("ウエスト", waist_choices, index=None, key=f"{key}_waist", format_func=lambda x: "" if x is None else x)
+        length = st.text_input("丈", key=f"{key}_length", placeholder=spec.get("length_placeholder", "丈を入力"))
         memo = st.text_input("備考", key=f"{key}_memo", placeholder="備考を入力")
         return {"qty": qty, "waist": waist, "length": length, "memo": memo}
-    
-    else:
-        # シャツ・靴下: 数量・サイズ・備考
-        qty = st.selectbox("数量", range(11), key=f"{key}_qty")
-        if key == "shirt":
-            size = st.selectbox("サイズ", ["S","M","L","XL"], index=None, key=f"{key}_size", format_func=lambda x: "" if x is None else x)
-        elif key == "socks":
+
+    elif spec["type"] == "qty_memo":
+        memo = st.text_input("備考", key=f"{key}_memo", placeholder="備考を入力")
+        return {"qty": qty, "memo": memo}
+
+    else:  # "qty_size_memo"
+        size_opt = spec.get("size_options", ["S","M","L","XL"])
+        if isinstance(size_opt, dict) and "range" in size_opt:
+            mn, mx, step = size_opt["range"]
+            size_choices = list(range(mn, mx, step))
+            size = st.selectbox("サイズ", size_choices, index=None, key=f"{key}_size", format_func=lambda x: "" if x is None else str(x))
+        elif size_opt == "free_text":
             size = st.text_input("サイズ", key=f"{key}_size", placeholder="サイズを入力")
         else:
-            size = ""
+            size = st.selectbox("サイズ", size_opt, index=None, key=f"{key}_size", format_func=lambda x: "" if x is None else x)
         memo = st.text_input("備考", key=f"{key}_memo", placeholder="備考を入力")
         return {"qty": qty, "size": size, "memo": memo}
 
@@ -172,10 +156,15 @@ if st.session_state.phase == "input":
 
     if st.button("住所検索"):
         clean_zip = zipcode.replace("-", "").replace(" ", "")
-        res = requests.get(f"https://zipcloud.ibsnet.co.jp/api/search?zipcode={clean_zip}").json()
-        if res.get("results"):
-            r = res["results"][0]
-            st.session_state.address_input = r["address1"] + r["address2"] + r["address3"]
+        try:
+            res = requests.get(f"https://zipcloud.ibsnet.co.jp/api/search?zipcode={clean_zip}", timeout=6).json()
+            if res.get("results"):
+                r = res["results"][0]
+                st.session_state.address_input = r["address1"] + r["address2"] + r["address3"]
+            else:
+                st.warning("該当する住所が見つかりませんでした。")
+        except Exception as e:
+            st.error("住所検索に失敗しました。時間をおいて再度お試しください。")
 
     address = st.text_input(
         "住所（必須）",
@@ -193,7 +182,10 @@ if st.session_state.phase == "input":
         order_data[key] = product_row(info["label"], key)
 
     # --- 合計金額計算 ---
-    total_price = sum(order_data[key]["qty"] * products[key]["price"] for key in products)
+    total_price = 0
+    for key, info in products.items():
+        qty = order_data[key].get("qty", 0) or 0
+        total_price += qty * info["price"]
 
     st.markdown(f"<div class='total-box'>合計金額：{total_price:,} 円</div>", unsafe_allow_html=True)
 
@@ -229,57 +221,84 @@ elif st.session_state.phase == "confirm":
         st.write(f"電話番号: {data.get('phone','未入力')}")
         st.write(f"メール: {data.get('email','未入力')}")
 
+    def format_item_line(pkey: str, item: dict) -> str:
+        spec = product_specs.get(pkey, {"type": "qty_size_memo"})
+        memo = f" / 備考: {item['memo']}" if item.get("memo") else ""
+        if spec["type"] == "pants":
+            # パンツ用表示
+            waist = item.get("waist", "")
+            length = item.get("length", "")
+            return f"{products[pkey]['label']}: {item['qty']}点 (ウエスト: {waist}, 丈: {length}){memo}"
+        elif spec["type"] == "qty_memo":
+            return f"{products[pkey]['label']}: {item['qty']}点{memo}"
+        else:
+            size = item.get("size", "")
+            return f"{products[pkey]['label']}: {item['qty']}点 ({size}){memo}"
+
     with col_order:
         st.write("【注文商品】")
-        for key, info in products.items():
-            item = data[key]
-            if item["qty"] > 0:
-                if key == "pants":
-                    memo = f" / 備考: {item['memo']}" if item["memo"] else ""
-                    st.write(f"{info['label']}: {item['qty']}点 (ウェスト: {item['waist']}, 丈: {item['length']}){memo}")
-                else:
-                    memo = f" / 備考: {item['memo']}" if item["memo"] else ""
-                    st.write(f"{info['label']}: {item['qty']}点 ({item['size']}){memo}")
+        for key in products:
+            item = data.get(key, {})
+            if item and (item.get("qty") or 0) > 0:
+                st.write(format_item_line(key, item))
         st.write(f"合計金額: {data['total_price']:,}円")
 
     st.divider()
     c1, c2 = st.columns(2)
     with c1:
-       if st.button("修正する", use_container_width=True):
-        data = st.session_state.order_data
+        if st.button("修正する", use_container_width=True):
+            data = st.session_state.order_data
+            # --- 商品入力値を session_state に戻す ---
+            for key in products:
+                item = data.get(key, {})
+                st.session_state[f"{key}_qty"] = item.get("qty", 0)
+                spec = product_specs.get(key, {"type": "qty_size_memo"})
+                if spec["type"] == "pants":
+                    st.session_state[f"{key}_waist"] = item.get("waist", None)
+                    st.session_state[f"{key}_length"] = item.get("length", "")
+                elif spec["type"] == "qty_memo":
+                    st.session_state[f"{key}_memo"] = item.get("memo", "")
+                else:
+                    st.session_state[f"{key}_size"] = item.get("size", None)
+                    st.session_state[f"{key}_memo"] = item.get("memo", "")
 
-        # --- 商品入力値を session_state に戻す ---
-        for key in products:
-            st.session_state[f"{key}_qty"] = data[key]["qty"]
-            st.session_state[f"{key}_memo"] = data[key]["memo"]
+            # --- 顧客情報 ---
+            st.session_state["address_input"] = data["address"]
 
-            if key == "pants":
-                st.session_state["pants_waist"] = data["pants"]["waist"]
-                st.session_state["pants_length"] = data["pants"]["length"]
-            else:
-                st.session_state[f"{key}_size"] = data[key]["size"]
+            st.session_state.phase = "input"
+            st.rerun()
 
-        # --- 顧客情報 ---
-        st.session_state["address_input"] = data["address"]
-
-        st.session_state.phase = "input"
-        st.rerun()
     with c2:
         if st.button("確定する", type="primary", use_container_width=True):
+            # Supabaseに入れるデータを仕様から動的に構築
             insert_data = {
                 "name": data["name"],
                 "zipcode": data["zipcode"],
                 "address": data["address"],
-                "phone": data["phone"],
-                "email": data["email"],
-                **{f"{key}": data[key]["qty"] for key in products},
-                **{f"{key}_memo": data[key]["memo"] for key in products},
-                **({f"pants_waist": data['pants']['waist'], f"pants_length": data['pants']['length']} if 'pants' in data else {}),
-                **({f"{key}_size": data[key]["size"] for key in products if key != "pants"})
+                "phone": data.get("phone"),
+                "email": data.get("email"),
+                "total_price": data["total_price"],
             }
+
+            for key in products:
+                item = data.get(key, {})
+                spec = product_specs.get(key, {"type": "qty_size_memo"})
+                # 数量
+                insert_data[f"{key}"] = item.get("qty", 0)
+                # 付随属性
+                if spec["type"] == "pants":
+                    insert_data[f"{key}_waist"] = item.get("waist", None)
+                    insert_data[f"{key}_length"] = item.get("length", "")
+                    insert_data[f"{key}_memo"] = item.get("memo", "")
+                elif spec["type"] == "qty_memo":
+                    insert_data[f"{key}_memo"] = item.get("memo", "")
+                else:
+                    insert_data[f"{key}_size"] = item.get("size", None)
+                    insert_data[f"{key}_memo"] = item.get("memo", "")
+
             res = supabase.table("orders").insert(insert_data).execute()
-            if res.data:
-                st.session_state.order_id = res.data[0]["id"]
+            if getattr(res, "data", None):
+                st.session_state.order_id = res.data[0].get("id")
             st.session_state.phase = "complete"
             st.rerun()
 
