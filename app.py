@@ -45,7 +45,9 @@ products = {
 #  - "free_text":     自由入力
 #  - 数値レンジ:      {"range": (min, max, step)} でセレクトボックス
 product_specs = {
-    "blazer":       {"type": "qty_size_memo", "size_options": ["S","M","L","XL"]},
+    "blazer":       {"type": "qty_size_memo", 
+                     "size_options": ["S","M","L","XL"],
+                     "types": ["Aタイプ", "Bタイプ"]},
     "shirt":        {"type": "qty_size_memo", "size_options": ["S","M","L","XL"]},
     "pants":        {"type": "pants",         "waist_range": (61, 111, 3), "length_placeholder": "72"},
     "vest":         {"type": "qty_size_memo", "size_options": ["S","M","L","XL"]},
@@ -112,12 +114,19 @@ def product_row(label: str, key: str):
 
     # 数量（共通）
     qty = st.selectbox("数量", range(11), key=f"{key}_qty")
-
+    item_type = None
+    if "types" in spec:
+        item_type = st.selectbox(
+            "タイプ", 
+            spec["types"], 
+            index=0,  # 0番目（Aタイプ）を初期選択にする
+            key=f"{key}_type"
+        )
     # 種別ごとに追加フィールド
     if spec["type"] == "pants":
         waist_min, waist_max, waist_step = spec.get("waist_range", (61,111,3))
         waist_choices = list(range(waist_min, waist_max, waist_step))
-        waist = st.selectbox("ウエスト", waist_choices, index=None, key=f"{key}_waist", format_func=lambda x: "" if x is None else x)
+        waist = st.selectbox("ウエスト", waist_choices, index=None, key=f"{key}_waist", format_func=lambda x: "" if x is None else str(x))
         length = st.text_input("丈", key=f"{key}_length", placeholder=spec.get("length_placeholder", "丈を入力"))
         memo = st.text_input("備考", key=f"{key}_memo", placeholder="備考を入力")
         return {"qty": qty, "waist": waist, "length": length, "memo": memo}
@@ -135,7 +144,7 @@ def product_row(label: str, key: str):
         elif size_opt == "free_text":
             size = st.text_input("サイズ", key=f"{key}_size", placeholder="サイズを入力")
         else:
-            size = st.selectbox("サイズ", size_opt, index=None, key=f"{key}_size", format_func=lambda x: "" if x is None else x)
+            size = st.selectbox("サイズ", size_opt, index=None, key=f"{key}_size", format_func=lambda x: "" if x is None else str(x))
         memo = st.text_input("備考", key=f"{key}_memo", placeholder="備考を入力")
         return {"qty": qty, "size": size, "memo": memo}
 
