@@ -161,7 +161,7 @@ if st.session_state.phase == "input":
     # --- お客様情報 ---
     st.write("### 1. お客様情報")
     name = st.text_input("お名前（必須）", value=st.session_state.order_data.get("name", ""))
-    zipcode = st.text_input("郵便番号(必須)  ハイフンなしで入力", value=st.session_state.order_data.get("zipcode",""), max_chars=7)
+    zipcode = st.text_input("郵便番号(必須)  ハイフンなしで入力", value=st.session_state.order_data.get("zipcode",""), max_chars=7,placeholder="例: 6068275")
 
     if st.button("住所検索"):
         clean_zip = zipcode.replace("-", "").replace(" ", "")
@@ -179,8 +179,8 @@ if st.session_state.phase == "input":
         "住所（必須）",
         value=st.session_state.get("address_input", st.session_state.order_data.get("address",""))
     )
-    phone = st.text_input("電話番号（任意）", value=st.session_state.order_data.get("phone",""))
-    email = st.text_input("メールアドレス（任意）", value=st.session_state.order_data.get("email",""))
+    phone = st.text_input("電話番号（任意）", value=st.session_state.order_data.get("phone",""), placeholder="例: 0750010001")
+    email = st.text_input("メールアドレス（任意）", value=st.session_state.order_data.get("email",""),placeholder="例: taro@outlook.jp")
 
     st.divider()
     st.write("### 2. 商品選択")
